@@ -1,0 +1,152 @@
+# GitLab CI/CD Pipeline for Next.js Site Project
+# Deploys Next.js application to Cloudflare Pages with D1 and R2
+
+stages:
+  - validate
+  - build
+  - migrate
+  - deploy
+  - cleanup
+
+variables:
+  NODE_VERSION: "20"
+  CLOUDFLARE_PROJECT_NAME: "PROJECT_NAME"
+
+# Default configuration for all jobs
+default:
+  image: node:${NODE_VERSION}
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules/
+      - .next/cache/
+
+# Validate stage: Lint, type check, and validate environment
+validate:lint:
+  stage: validate
+  script:
+    - npm ci
+    - npm run lint
+  only:
+    - main
+    - merge_requests
+
+validate:typecheck:
+  stage: validate
+  script:
+    - npm ci
+    - npx tsc --noEmit
+  only:
+    - main
+    - merge_requests
+
+validate:env:
+  stage: validate
+  script:
+    - node scripts/validate-env.js
+  only:
+    - main
+    - merge_requests
+
+# Build stage: Build Next.js application with OpenNext for Cloudflare
+build:
+  stage: build
+  script:
+    - npm ci
+    - npx @opennextjs/cloudflare build
+  artifacts:
+    paths:
+      - .open-next/
+    expire_in: 1 hour
+  only:
+    - main
+    - merge_requests
+
+# Migrate stage: Run database migrations
+migrate:production:
+  stage: migrate
+  image: node:${NODE_VERSION}
+  before_script:
+    - npm install -g wrangler
+    - export CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN}"
+    - export CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID}"
+  script:
+    - echo "Testing authentication..."
+    - wrangler whoami
+    - echo "Running migrations on database ${D1_DATABASE_NAME_PROD}..."
+    - wrangler d1 migrations apply ${D1_DATABASE_NAME_PROD} --remote
+  environment:
+    name: production
+  only:
+    - main
+  when: manual
+
+migrate:preview:
+  stage: migrate
+  image: node:${NODE_VERSION}
+  before_script:
+    - npm install -g wrangler
+  script:
+    - wrangler d1 migrations apply ${D1_DATABASE_NAME_PREVIEW} --remote
+  environment:
+    name: preview
+  variables:
+    CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN}
+    CLOUDFLARE_ACCOUNT_ID: ${CLOUDFLARE_ACCOUNT_ID}
+  only:
+    - merge_requests
+
+# Deploy stage: Deploy to Cloudflare Workers
+deploy:production:
+  stage: deploy
+  image: node:${NODE_VERSION}
+  before_script:
+    - npm install -g wrangler
+    - export CLOUDFLARE_API_TOKEN="${CLOUDFLARE_API_TOKEN}"
+    - export CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID}"
+  script:
+    - echo "Testing authentication..."
+    - wrangler whoami
+    - echo "Deploying to Cloudflare Workers..."
+    - wrangler deploy
+  environment:
+    name: production
+    url: https://example-domain.com
+  only:
+    - main
+  when: manual
+
+deploy:preview:
+  stage: deploy
+  image: node:${NODE_VERSION}
+  before_script:
+    - npm install -g wrangler
+  script:
+    - wrangler deploy --env preview
+  environment:
+    name: preview/${CI_COMMIT_REF_SLUG}
+    url: https://preview.${CI_COMMIT_REF_SLUG}.example-site.workers.dev
+    on_stop: cleanup:preview
+  variables:
+    CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN}
+    CLOUDFLARE_ACCOUNT_ID: ${CLOUDFLARE_ACCOUNT_ID}
+  only:
+    - merge_requests
+
+# Cleanup stage: Remove preview environments
+cleanup:preview:
+  stage: cleanup
+  image: node:${NODE_VERSION}
+  before_script:
+    - npm install -g wrangler
+  script:
+    - echo "Preview cleanup for Workers deployment"
+  environment:
+    name: preview/${CI_COMMIT_REF_SLUG}
+    action: stop
+  when: manual
+  only:
+    - merge_requests
+
