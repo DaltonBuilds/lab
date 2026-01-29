@@ -8,7 +8,7 @@
 
 - Nothing was reachable on the Proxmox host anymore. I could not ping the gateway (192.168.40.1) and all NICs (enp5s0, 6s0, etc.) were DOWN. Proxmox was now an isolated island.
 
-- The Proxmox host was effectively “plugged into the wrong network” because the switch port/path to it wasn’t carrying VLAN 40 the way the host expected (VLAN tagging/trunk/PVID mismatch), so its ARP to 192.168.40.1 never got a reply and it looked isolated even though everything else on the network was fine.
+- The Proxmox host was effectively “plugged into the wrong network” because the switch port/path to it wasn’t carrying VLAN 40 the way the host expected (VLAN tagging/trunk/PVID mismatch), so its ARP to `192.168.40.1` never got a reply and it looked isolated even though everything else on the network was fine.
 
 ## The Solution
 - After doing everything under the sun, including getting an adapter so I could plug the ethernet cable from the PC (Proxmox host) into my MacBook Pro to test things out, I finally uncovered the root problem(s) with the help of ChatGPT. 
@@ -17,7 +17,7 @@
 
 - The fix was to correct the UniFi port/VLAN settings (PVID/native + allowed/tagged VLANs) on the Flex/uplink so the Proxmox NIC was actually receiving VLAN 40 (or untagged on the right VLAN) instead of being shoved onto/tagged by the wrong VLAN, after which ARP to 192.168.40.1 started working immediately.
 
-- I know for a fact I tried this early on in the process but another key move was to ensure all changes were actually applied by rebooting and/or timely use of commands like `systemctl restart networking` for instance.
+- I know for a fact I tried this early on in the process but another key move was to ensure all changes were actually applied by rebooting and/or timely use of commands like `systemctl restart networking` for instance. Not giving it enough time to carry out the changes and not starting fresh made it look like the proper change wasn't the right move at the time.
 
 ## 'Cheat Sheet' Commands That Were Useful
 
