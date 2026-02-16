@@ -1,0 +1,44 @@
+name: Project Validation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # --- TERRAFORM VALIDATION ---
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+      - name: Terraform Format & Validate
+        run: |
+          terraform fmt -check
+          terraform validate
+
+      # --- PYTHON LINTING ---
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install Python Linters
+        run: pip install flake8
+      - name: Lint Python code
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      # --- NODE/NEXTJS VALIDATION ---
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      - name: Install Dependencies
+        run: npm ci
+      - name: NextJS Build Check
+        run: npm run build
+
