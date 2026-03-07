@@ -1,0 +1,4 @@
+# Projects
+# Ignore the projects directory entirely
+# This ensures child repos don't conflict with the Lab repo
+projects/

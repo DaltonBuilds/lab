@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform-ingress
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/DaltonBuilds/homelab-gitops.git
+    targetRevision: main
+    path: apps/platform-ingress
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
