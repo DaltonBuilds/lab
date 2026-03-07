@@ -1,0 +1,14 @@
+{
+  "build": {
+    "context": "..",
+    "dockerfile": "Dockerfile"
+  },
+  "postCreateCommand": "scripts/setup",
+  "features": {},
+  "forwardPorts": [],
+  "mounts": [],
+  "remoteEnv": {
+    "MISE_TRUSTED_CONFIG_PATHS": "/workspaces/${containerWorkspaceFolderBasename}",
+    "DEVCONTAINER": "1"
+  }
+}
