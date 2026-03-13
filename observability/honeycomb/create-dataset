@@ -1,0 +1,13 @@
+# This creates a new Dataset in Honeycomb with a name you pick
+# First run `export HONEYCOMB_API_KEY="<API KEY>"`
+
+curl --request POST \
+  --url https://api.honeycomb.io/1/datasets \
+  --header 'Content-Type: application/json' \
+  --header 'X-Honeycomb-Team: HONEYCOMB_API_KEY' \
+  --data '{
+    "name": "ci-portfolio-site",
+    "description": "Initialized via API"
+  }'
+
+
